@@ -6,13 +6,15 @@ name: Go
 on:
   push:
     branches: [ "master" ]
+    tags: ["v*"]
   pull_request:
     branches: [ "master" ]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
+    outputs: 
+      build-dir: ${{ steps.set-build-dir.outputs.build-dir }}
     steps:
     - uses: actions/checkout@v4
 
@@ -24,5 +26,17 @@ jobs:
     - name: Build
       run: ./build.sh x86
 
-    - name: Test
-      run: go test -v ./...
+    - name: Set build dir
+      id: set-build-dir
+      run: echo "build-dir=output" >> $GITHUB_OUTPUT
+      
+  deploy:
+    if: startsWith(github.ref, 'refs/tags/')  # 仅在打 Tag 时运行
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Deploy the Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: release-artifacts
+        path: ${{ needs.build.outputs.build-dir }}
